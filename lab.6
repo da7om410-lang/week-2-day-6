@@ -1,0 +1,59 @@
+import numpy as np
+import pandas as pd
+
+# 1) Define dataset
+raw = {
+    "age": [25, "N/A", 40, 33, "?"],
+    "income": [50000, 60000, None, "unknown", 80000],
+    "churned": [0, 1, 0, 1, 0],
+}
+df_raw = pd.DataFrame(raw)
+
+# 2) Normalize missing tokens to NaN
+missing_tokens = ["N/A", "NA", "not reported", "unknown", "?"]
+df = df_raw.replace(missing_tokens, np.nan)
+
+# Ensure numeric columns are numeric
+df["age"] = pd.to_numeric(df["age"], errors="coerce")
+df["income"] = pd.to_numeric(df["income"], errors="coerce")
+
+# 3) Missingness summary
+def missing_summary(df):
+    per_col = df.isna().mean() * 100
+    per_row = df.isna().mean(axis=1) * 100
+    return per_col, per_row
+
+col_missing, row_missing = missing_summary(df)
+
+print("Missing % per column:")
+print(col_missing)
+print("\nMissing % per row:")
+print(row_missing)
+
+# 4) Version A: drop rows with missing in key columns
+key_cols = ["age", "income"]
+df_A = df.dropna(subset=key_cols)
+
+# 5) Version B: impute + missing indicators
+df_B = df.copy()
+
+for col in ["age", "income"]:
+    # missing indicator
+    df_B[f"{col}_missing"] = df_B[col].isna().astype(int)
+    
+    # median imputation
+    df_B[col] = df_B[col].fillna(df_B[col].median())
+
+# 6) Compare basic metrics between A and B
+comparison = {
+    "A_rows": len(df_A),
+    "B_rows": len(df_B),
+    "A_age_mean": df_A["age"].mean(),
+    "B_age_mean": df_B["age"].mean(),
+    "A_income_mean": df_A["income"].mean(),
+    "B_income_mean": df_B["income"].mean(),
+}
+
+print("\nComparison between Version A and B:")
+for k, v in comparison.items():
+    print(f"{k}: {v}")
